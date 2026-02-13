@@ -1,0 +1,20 @@
+BasedOnStyle: LLVM
+Language: Cpp
+
+IndentWidth: "4"
+TabWidth: "4"
+
+BinPackArguments: false
+BinPackParameters: false
+
+AccessModifierOffset: -4
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+
+AlwaysBreakAfterReturnType: None
+AlwaysBreakTemplateDeclarations: true
+
+PenaltyBreakComment: 0
+ColumnLimit: 120

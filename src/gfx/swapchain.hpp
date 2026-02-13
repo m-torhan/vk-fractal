@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) 2026 Maciej Torhan <https://github.com/m-torhan>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#pragma once
+
+#include <vulkan/vulkan.h>
+
+#include <vector>
+
+class VkContext;
+
+class Swapchain {
+public:
+    void init(VkContext &ctx, uint32_t w, uint32_t h);
+    void shutdown(VkDevice device);
+
+    void recreate(VkContext &ctx, uint32_t w, uint32_t h);
+
+    VkSwapchainKHR handle() const { return swapchain_; }
+    VkFormat format() const { return format_; }
+    VkExtent2D extent() const { return extent_; }
+
+    const std::vector<VkImageView> &image_views() const { return views_; }
+
+private:
+    void create(VkContext &ctx, uint32_t w, uint32_t h);
+    void destroy(VkDevice device);
+
+    VkSwapchainKHR swapchain_{};
+    VkFormat format_{};
+    VkExtent2D extent_{};
+    std::vector<VkImage> images_;
+    std::vector<VkImageView> views_;
+};
