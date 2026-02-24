@@ -1,5 +1,8 @@
 # Fractal visualization in Vulkan
 
+[![build](https://github.com/m-torhan/vk-fractal/actions/workflows/build.yml/badge.svg)](https://github.com/m-torhan/vk-fractal/actions/workflows/build.yml)
+[![pre-commit](https://github.com/m-torhan/vk-fractal/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/m-torhan/vk-fractal/actions/workflows/pre-commit.yml)
+
 <img src="imgs/mandelbulb.png" alt="Mandelbulb" width=400>
 
 ## Build
