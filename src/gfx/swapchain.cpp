@@ -111,9 +111,13 @@ void Swapchain::create(VkContext &ctx, uint32_t w, uint32_t h) {
         vci.subresourceRange.layerCount = 1;
         vk_check(vkCreateImageView(ctx.device(), &vci, nullptr, &views_[i]), "vkCreateImageView");
     }
+
+    create_render_pass(ctx.device());
 }
 
 void Swapchain::destroy(VkDevice device) {
+    destroy_render_pass(device);
+
     for (auto v : views_) {
         vkDestroyImageView(device, v, nullptr);
     }
@@ -132,4 +136,51 @@ void Swapchain::shutdown(VkDevice device) { destroy(device); }
 void Swapchain::recreate(VkContext &ctx, uint32_t w, uint32_t h) {
     destroy(ctx.device());
     create(ctx, w, h);
+}
+
+void Swapchain::create_render_pass(VkDevice device) {
+    VkAttachmentDescription color{};
+    color.format = format_;
+    color.samples = VK_SAMPLE_COUNT_1_BIT;
+    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    color.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    color.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference color_ref{};
+    color_ref.attachment = 0;
+    color_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_ref;
+
+    // Basic dependency for layout transition / sync
+    VkSubpassDependency dep{};
+    dep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dep.dstSubpass = 0;
+    dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dep.srcAccessMask = 0;
+    dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+    rpci.attachmentCount = 1;
+    rpci.pAttachments = &color;
+    rpci.subpassCount = 1;
+    rpci.pSubpasses = &subpass;
+    rpci.dependencyCount = 1;
+    rpci.pDependencies = &dep;
+
+    vk_check(vkCreateRenderPass(device, &rpci, nullptr, &render_pass_), "vkCreateRenderPass");
+}
+
+void Swapchain::destroy_render_pass(VkDevice device) {
+    if (render_pass_ != VK_NULL_HANDLE) {
+        vkDestroyRenderPass(device, render_pass_, nullptr);
+        render_pass_ = VK_NULL_HANDLE;
+    }
 }

@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <imgui.h>
 #include <unistd.h>
 
 #include <chrono>
@@ -28,23 +29,6 @@ std::string shader_dir_from_exe() {
     }
     return (std::filesystem::current_path() / "shaders").string();
 }
-
-struct alignas(16) GpuParams {
-    float cam_pos[4] = {0, 0, 3, 0};
-
-    // Camera basis (supports roll):
-    // fw = forward, rt = right, up = up
-    float cam_fw[4] = {0, 0, -1, 0};
-    float cam_rt[4] = {1, 0, 0, 0};
-    float cam_up[4] = {0, 1, 0, 0};
-
-    float render0[4] = {100.0f, 1e-3f, 1e-3f, 1.2f}; // max_dist, hit_eps, normal_eps, fov
-    int render1[4] = {256, 0, 12, 0};                // max_steps, field_id, iterations, debug_flags
-
-    float fractal0[4] = {8.0f, 8.0f, 0.0f, 0.0f}; // bailout, power, ...
-    float misc0[4] = {0.0f, 1.0f, 0.0f, 0.0f};    // time, aspect, ...
-};
-static_assert(sizeof(GpuParams) % 16 == 0);
 
 void framebuffer_resize_cb(GLFWwindow *w, int width, int height) {
     auto *app = reinterpret_cast<App *>(glfwGetWindowUserPointer(w));
@@ -74,6 +58,14 @@ static void key_cb(GLFWwindow *w, int key, int scancode, int action, int mods) {
         case GLFW_KEY_X:
             app->on_field_change(1);
             break;
+        case GLFW_KEY_C:
+            if (app->mouse_locked()) {
+                glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            } else {
+                glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            }
+            app->toggle_mouse_lock();
+            break;
         }
     }
 }
@@ -81,6 +73,10 @@ static void key_cb(GLFWwindow *w, int key, int scancode, int action, int mods) {
 } // namespace
 
 void App::on_mouse_move(double xpos, double ypos) {
+    if (!mouse_locked_) {
+        return;
+    }
+
     if (first_mouse_) {
         last_x_ = xpos;
         last_y_ = ypos;
@@ -106,7 +102,7 @@ void App::on_framebuffer_resize(int width, int height) {
     }
 }
 
-void App::on_field_change(int d) { field_id_ += d; }
+void App::on_field_change(int d) { params_.render1[1] += d; }
 
 void App::init_window() {
     if (!glfwInit()) {
@@ -130,6 +126,14 @@ void App::init_window() {
 }
 
 void App::init_vulkan() {
+    params_.render1[1] = 2;      // field_id
+    params_.render1[2] = 256;    // iterations
+    params_.fractal0[0] = 32.0f; // bailout
+    params_.fractal0[1] = 8.0f;  // power
+    params_.render0[0] = 50.0f;  // max_dist (mandelbulb is “dense”)
+    params_.render1[0] = 256;    // max_steps
+    params_.render0[1] = 1e-3f;  // hit_eps
+
     ctx_.init(window_);
 
     int fb_w = 0, fb_h = 0;
@@ -144,6 +148,8 @@ void App::init_vulkan() {
 
     const std::string shader_dir = shader_dir_from_exe();
     fsq_.init(ctx_, sw_, shader_dir);
+
+    ctx_.init_imgui(window_, sw_.render_pass(), sw_.image_count());
 
     // Update each descriptor set to point at the matching frame's UBO.
     VkBuffer ubos[FrameRing::kMaxFrames]{};
@@ -216,18 +222,13 @@ void App::draw_frame(float time_seconds) {
     }
     vk_check(acq, "vkAcquireNextImageKHR");
 
-    // --- Update UBO ---
-    GpuParams u{};
-    u.misc0[0] = time_seconds;
-    u.misc0[1] = static_cast<float>(sw_.extent().width) / static_cast<float>(sw_.extent().height); // aspect
+    // --- ImGui ---
+    ctx_.imgui_new_frame();
+    build_ui();
 
-    u.render1[1] = field_id_; // field_id
-    u.render1[2] = 256;       // iterations
-    u.fractal0[0] = 32.0f;    // bailout
-    u.fractal0[1] = 8.0f;     // power
-    u.render0[0] = 50.0f;     // max_dist (mandelbulb is “dense”)
-    u.render1[0] = 256;       // max_steps
-    u.render0[1] = 1e-3f;     // hit_eps
+    // --- Update UBO ---
+    params_.misc0[0] = time_seconds;
+    params_.misc0[1] = static_cast<float>(sw_.extent().width) / static_cast<float>(sw_.extent().height); // aspect
 
     glm::vec3 pos;
     pos.x = cam_radius_ * cos(cam_pitch_) * sin(cam_yaw_);
@@ -236,30 +237,30 @@ void App::draw_frame(float time_seconds) {
 
     pos += cam_target_;
 
-    u.cam_pos[0] = pos.x;
-    u.cam_pos[1] = pos.y;
-    u.cam_pos[2] = pos.z;
+    params_.cam_pos[0] = pos.x;
+    params_.cam_pos[1] = pos.y;
+    params_.cam_pos[2] = pos.z;
 
     glm::vec3 fw, rt, up;
     camera_.getBasis(fw, rt, up);
 
-    u.cam_pos[0] = camera_.position.x;
-    u.cam_pos[1] = camera_.position.y;
-    u.cam_pos[2] = camera_.position.z;
+    params_.cam_pos[0] = camera_.position.x;
+    params_.cam_pos[1] = camera_.position.y;
+    params_.cam_pos[2] = camera_.position.z;
 
-    u.cam_fw[0] = fw.x;
-    u.cam_fw[1] = fw.y;
-    u.cam_fw[2] = fw.z;
+    params_.cam_fw[0] = fw.x;
+    params_.cam_fw[1] = fw.y;
+    params_.cam_fw[2] = fw.z;
 
-    u.cam_rt[0] = rt.x;
-    u.cam_rt[1] = rt.y;
-    u.cam_rt[2] = rt.z;
+    params_.cam_rt[0] = rt.x;
+    params_.cam_rt[1] = rt.y;
+    params_.cam_rt[2] = rt.z;
 
-    u.cam_up[0] = up.x;
-    u.cam_up[1] = up.y;
-    u.cam_up[2] = up.z;
+    params_.cam_up[0] = up.x;
+    params_.cam_up[1] = up.y;
+    params_.cam_up[2] = up.z;
 
-    std::memcpy(f.ubo_mapped, &u, sizeof(u));
+    std::memcpy(f.ubo_mapped, &params_, sizeof(params_));
 
     // --- Record command buffer ---
     vk_check(vkResetCommandBuffer(f.cmd, 0), "vkResetCommandBuffer");
@@ -300,6 +301,8 @@ void App::draw_frame(float time_seconds) {
 
     vkCmdDraw(f.cmd, 3, 1, 0, 0);
 
+    ctx_.imgui_render(f.cmd);
+
     vkCmdEndRenderPass(f.cmd);
 
     vk_check(vkEndCommandBuffer(f.cmd), "vkEndCommandBuffer");
@@ -336,6 +339,35 @@ void App::draw_frame(float time_seconds) {
     }
 
     frames_.advance();
+}
+
+void App::build_ui() {
+    ImGui::Begin("Fractal Controls");
+
+    ImGui::Text("Camera");
+    ImGui::DragFloat3("Position", &camera_.position.x, 0.01f);
+
+    ImGui::Separator();
+
+    ImGui::Text("Raymarch");
+    ImGui::SliderInt("Max steps", &params_.render1[0], 16, 2048);
+    ImGui::SliderFloat("Max dist", &params_.render0[0], 1e-3f, 10.0f, "%.6f", ImGuiSliderFlags_Logarithmic);
+    ImGui::SliderFloat("Hit eps", &params_.render0[1], 1e-6f, 1e-2f, "%.6f", ImGuiSliderFlags_Logarithmic);
+    ImGui::SliderFloat("Normal eps", &params_.render0[4], 1e-6f, 1e-2f, "%.6f", ImGuiSliderFlags_Logarithmic);
+
+    ImGui::Separator();
+
+    ImGui::Text("Fractal");
+
+    const char *fields[] = {"Sphere", "Box", "Mandelbulb", "Mandelbox"};
+
+    ImGui::Combo("Field", &params_.render1[1], fields, IM_ARRAYSIZE(fields));
+
+    ImGui::SliderInt("Iterations", &params_.render1[2], 16, 2048);
+    ImGui::SliderFloat("Power", &params_.fractal0[1], 2.0f, 32.0f);
+    ImGui::SliderFloat("Bailout", &params_.fractal0[0], 1.0f, 200.0f);
+
+    ImGui::End();
 }
 
 void App::run() {

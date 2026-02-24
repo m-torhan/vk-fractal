@@ -17,28 +17,22 @@
 #include "gfx/swapchain.hpp"
 #include "gfx/vk_context.hpp"
 
-struct alignas(16) ParamsUBO {
-    alignas(4) float time = 0.0f;
-    alignas(4) float _pad_time[3] = {0, 0, 0};
+struct alignas(16) GpuParams {
+    float cam_pos[4] = {0, 0, 3, 0};
 
-    alignas(16) glm::vec4 cam_pos = {0, 0, 3, 0};
-    alignas(16) glm::vec4 cam_dir = {0, 0, -1, 0};
+    // Camera basis (supports roll):
+    // fw = forward, rt = right, up = up
+    float cam_fw[4] = {0, 0, -1, 0};
+    float cam_rt[4] = {1, 0, 0, 0};
+    float cam_up[4] = {0, 1, 0, 0};
 
-    alignas(4) float max_dist = 100.0f;
-    alignas(4) int max_steps = 256;
-    alignas(4) float hit_eps = 1e-3f;
-    alignas(4) float normal_eps = 1e-3f;
+    float render0[4] = {100.0f, 1e-3f, 1e-3f, 1.2f}; // max_dist, hit_eps, normal_eps, fov
+    int render1[4] = {256, 0, 12, 0};                // max_steps, field_id, iterations, debug_flags
 
-    alignas(4) int field_id = 0;
-    alignas(4) int iterations = 12;
-    alignas(4) float bailout = 8.0f;
-    alignas(4) float power = 8.0f;
-
-    alignas(16) glm::vec4 p0 = {0, 0, 0, 0};
-    alignas(16) glm::vec4 p1 = {0, 0, 0, 0};
+    float fractal0[4] = {8.0f, 8.0f, 0.0f, 0.0f}; // bailout, power, ...
+    float misc0[4] = {0.0f, 1.0f, 0.0f, 0.0f};    // time, aspect, ...
 };
-
-static_assert(sizeof(ParamsUBO) % 16 == 0);
+static_assert(sizeof(GpuParams) % 16 == 0);
 
 class App {
 public:
@@ -46,6 +40,8 @@ public:
     void on_framebuffer_resize(int width, int height);
     void on_mouse_move(double x, double y);
     void on_field_change(int d);
+    bool mouse_locked() { return mouse_locked_; }
+    void toggle_mouse_lock() { mouse_locked_ = !mouse_locked_; }
 
 private:
     void init_window();
@@ -54,6 +50,8 @@ private:
 
     void draw_frame(float time_seconds);
     void recreate_swapchain_if_needed();
+
+    void build_ui();
 
     GLFWwindow *window_{};
     uint32_t win_w_ = 1280;
@@ -76,5 +74,7 @@ private:
     bool first_mouse_ = true;
     double last_x_, last_y_;
 
-    unsigned int field_id_ = 2; // 2 = (mandelbulb)
+    GpuParams params_{};
+
+    bool mouse_locked_ = true;
 };

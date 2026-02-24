@@ -177,6 +177,18 @@ void VkContext::init(GLFWwindow *window) {
     vk_check(vkCreateCommandPool(device_, &cpci, nullptr, &cmd_pool_), "vkCreateCommandPool");
 }
 
+void VkContext::init_imgui(GLFWwindow *window, VkRenderPass render_pass, uint32_t swapchain_image_count) {
+    imgui_.init(window,
+                instance_,
+                phys_,
+                device_,
+                qf_.graphics,
+                graphics_queue_,
+                render_pass,
+                swapchain_image_count,
+                cmd_pool_);
+}
+
 void VkContext::shutdown() {
     if (device_) {
         vkDeviceWaitIdle(device_);

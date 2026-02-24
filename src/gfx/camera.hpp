@@ -17,7 +17,7 @@ class Camera {
 public:
     glm::vec3 position{0.0f, 0.0f, 3.0f};
 
-    float move_speed = 5.0f;
+    float move_speed = 0.5f;
 
     // Radians per pixel
     float mouse_sensitivity = 0.0025f;

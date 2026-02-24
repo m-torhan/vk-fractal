@@ -10,12 +10,18 @@
 
 #include <GLFW/glfw3.h>
 
+#include "gfx/imgui_layer.hpp"
 #include "gfx/vk_bootstrap.hpp"
 
 class VkContext {
 public:
     void init(GLFWwindow *window);
     void shutdown();
+    void init_imgui(GLFWwindow *window, VkRenderPass render_pass, uint32_t swapchain_image_count);
+    void shutdown_imgui();
+
+    void imgui_new_frame() { imgui_.new_frame(); }
+    void imgui_render(VkCommandBuffer cmd) { imgui_.render(cmd); }
 
     VkInstance instance() const { return instance_; }
     VkPhysicalDevice phys() const { return phys_; }
@@ -47,4 +53,6 @@ private:
     VkCommandPool cmd_pool_{};
 
     VkPhysicalDeviceProperties props_{};
+
+    ImGuiLayer imgui_;
 };

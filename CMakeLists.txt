@@ -36,6 +36,36 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
+# ImGui
+FetchContent_Declare(
+  imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui
+  GIT_TAG        v1.92.6
+)
+FetchContent_MakeAvailable(imgui)
+
+add_library(imgui STATIC
+  ${imgui_SOURCE_DIR}/imgui.cpp
+  ${imgui_SOURCE_DIR}/imgui_draw.cpp
+  ${imgui_SOURCE_DIR}/imgui_tables.cpp
+  ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+  ${imgui_SOURCE_DIR}/imgui_demo.cpp
+
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+)
+
+target_include_directories(imgui PUBLIC
+  ${imgui_SOURCE_DIR}
+  ${imgui_SOURCE_DIR}/backends
+)
+
+target_link_libraries(imgui
+  PUBLIC
+    glfw
+    Vulkan::Vulkan
+)
+
 # --- Shader compilation helper ---
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(compile_shaders)
@@ -45,6 +75,7 @@ add_executable(vk_fractal
   src/main.cpp
   src/app/app.hpp src/app/app.cpp
   src/gfx/camera.hpp src/gfx/camera.cpp
+  src/gfx/imgui_layer.hpp src/gfx/imgui_layer.cpp
   src/gfx/vk_bootstrap.hpp
   src/gfx/vk_context.hpp src/gfx/vk_context.cpp
   src/gfx/swapchain.hpp src/gfx/swapchain.cpp
@@ -55,7 +86,7 @@ add_executable(vk_fractal
 )
 
 target_include_directories(vk_fractal PRIVATE src)
-target_link_libraries(vk_fractal PRIVATE Vulkan::Vulkan glfw glm::glm)
+target_link_libraries(vk_fractal PRIVATE Vulkan::Vulkan glfw glm::glm imgui)
 
 target_compile_options(vk_fractal PRIVATE -Wall -Wextra -Wpedantic -Wno-missing-field-initializers)
 
