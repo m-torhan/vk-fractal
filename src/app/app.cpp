@@ -222,8 +222,8 @@ void App::draw_frame(float time_seconds) {
     u.misc0[1] = static_cast<float>(sw_.extent().width) / static_cast<float>(sw_.extent().height); // aspect
 
     u.render1[1] = field_id_; // field_id
-    u.render1[2] = 32;        // iterations
-    u.fractal0[0] = 8.0f;     // bailout
+    u.render1[2] = 256;       // iterations
+    u.fractal0[0] = 32.0f;    // bailout
     u.fractal0[1] = 8.0f;     // power
     u.render0[0] = 50.0f;     // max_dist (mandelbulb is “dense”)
     u.render1[0] = 256;       // max_steps

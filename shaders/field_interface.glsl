@@ -8,8 +8,8 @@
 #define VKF_FIELD_INTERFACE_GLSL
 
 struct FieldSample {
-  float d;    // distance bound / step hint
-  float aux;  // optional: trap/iter/density
+    float d;   // distance bound / step hint
+    float aux; // optional: trap/iter/density
 };
 
 FieldSample field_eval(vec3 p);

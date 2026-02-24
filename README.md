@@ -24,4 +24,4 @@ cmake --build build -j $(nproc)
   - 0 - debug ball
   - 1 - debug box
   - 2 - Mandelbulb
-  - 3 - Mandelbox (not implemented yet)
+  - 3 - Mandelbox
