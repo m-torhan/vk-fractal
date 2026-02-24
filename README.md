@@ -28,3 +28,6 @@ cmake --build build -j $(nproc)
   - 1 - debug box
   - 2 - Mandelbulb
   - 3 - Mandelbox
+  - 4 - Julia 3D
+- C - unlock mouse
+- ImGui controls - Render/Fractal params

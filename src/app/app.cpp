@@ -260,6 +260,38 @@ void App::draw_frame(float time_seconds) {
     params_.cam_up[1] = up.y;
     params_.cam_up[2] = up.z;
 
+    switch (animated_param_) {
+    case 0:
+        break;
+    case 1: // Julia C.x
+        params_.julia_c[0] = std::fmod(time_seconds / 4.0f, 4.0f) - 2.0f;
+        break;
+    case 2: // Julia C.y
+        params_.julia_c[1] = std::fmod(time_seconds / 4.0f, 4.0f) - 2.0f;
+        break;
+    case 3: // Julia C.z
+        params_.julia_c[2] = std::fmod(time_seconds / 4.0f, 4.0f) - 2.0f;
+        break;
+    case 4: // Julia C.xy
+    {
+        float t = std::fmod(time_seconds / 4.0f, 2 * std::numbers::pi_v<float>);
+        params_.julia_c[0] = std::sin(t);
+        params_.julia_c[1] = std::cos(t);
+    } break;
+    case 5: // Julia C.xy
+    {
+        float t = std::fmod(time_seconds / 4.0f, 2 * std::numbers::pi_v<float>);
+        params_.julia_c[1] = std::sin(t);
+        params_.julia_c[2] = std::cos(t);
+    } break;
+    case 6: // Julia C.xy
+    {
+        float t = std::fmod(time_seconds / 4.0f, 2 * std::numbers::pi_v<float>);
+        params_.julia_c[0] = std::sin(t);
+        params_.julia_c[2] = std::cos(t);
+    } break;
+    }
+
     std::memcpy(f.ubo_mapped, &params_, sizeof(params_));
 
     // --- Record command buffer ---
@@ -359,13 +391,22 @@ void App::build_ui() {
 
     ImGui::Text("Fractal");
 
-    const char *fields[] = {"Sphere", "Box", "Mandelbulb", "Mandelbox"};
+    const char *fields[] = {"Sphere", "Box", "Mandelbulb", "Mandelbox", "Julia"};
 
     ImGui::Combo("Field", &params_.render1[1], fields, IM_ARRAYSIZE(fields));
 
+    ImGui::SliderFloat3("Julia C", &params_.julia_c[0], -2.0f, 2.0f);
     ImGui::SliderInt("Iterations", &params_.render1[2], 16, 2048);
     ImGui::SliderFloat("Power", &params_.fractal0[1], 2.0f, 32.0f);
     ImGui::SliderFloat("Bailout", &params_.fractal0[0], 1.0f, 200.0f);
+
+    ImGui::Separator();
+
+    ImGui::Text("Animate");
+
+    const char *animated_params[] = {
+        "None", "Julia C.x", "Julia C.y", "Julia C.z", "Julia C.xy", "Julia C.yz", "Julia C.xz"};
+    ImGui::Combo("Param", &animated_param_, animated_params, IM_ARRAYSIZE(animated_params));
 
     ImGui::End();
 }

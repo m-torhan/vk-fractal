@@ -30,6 +30,7 @@ struct alignas(16) GpuParams {
     int render1[4] = {256, 0, 12, 0};                // max_steps, field_id, iterations, debug_flags
 
     float fractal0[4] = {8.0f, 8.0f, 0.0f, 0.0f}; // bailout, power, ...
+    float julia_c[4] = {0.3, 0.5, -0.2, 0.0f};    // Julia set constant
     float misc0[4] = {0.0f, 1.0f, 0.0f, 0.0f};    // time, aspect, ...
 };
 static_assert(sizeof(GpuParams) % 16 == 0);
@@ -75,6 +76,7 @@ private:
     double last_x_, last_y_;
 
     GpuParams params_{};
+    int animated_param_ = 0;
 
     bool mouse_locked_ = true;
 };

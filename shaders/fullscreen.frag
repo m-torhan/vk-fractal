@@ -7,6 +7,7 @@
 #version 460
 
 #include "field_interface.glsl"
+#include "fields/julia.glsl"
 #include "fields/mandelbox.glsl"
 #include "fields/mandelbulb.glsl"
 
@@ -24,6 +25,7 @@ layout(std140, set = 0, binding = 0) uniform Params {
     ivec4 render1; // x=max_steps, y=field_id, z=iterations, w=debug_flags (unused)
 
     vec4 fractal0; // x=bailout, y=power, z,w unused
+    vec4 julia_c;  // x,y,z=Julia set constant, w unused
     vec4 misc0;    // x=time, y=aspect, z,w unused
 }
 U;
@@ -55,6 +57,12 @@ FieldSample field_eval(vec3 p) {
         int iters = max(U.render1.z, 1);
         float bailout = max(U.fractal0.x, 2.0);
         return field_mandelbox(p, iters, bailout);
+    } else if (id == 4) {
+        int iters = max(U.render1.z, 1);
+        float bailout = max(U.fractal0.x, 2.0);
+        float power = max(U.fractal0.y, 2.0);
+        vec3 c = U.julia_c.xyz;
+        return field_julia(p, c, iters, power, bailout);
     }
 
     return FieldSample(1e9, 0.0);
